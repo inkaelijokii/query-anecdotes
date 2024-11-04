@@ -1,20 +1,42 @@
-const AnecdoteForm = () => {
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import axios from 'axios'
+import { useNotification } from './NotificationContext'
 
-  const onCreate = (event) => {
-    event.preventDefault()
-    const content = event.target.anecdote.value
-    event.target.anecdote.value = ''
-    console.log('new anecdote')
+const addAnecdote = async (newAnecdote) => {
+  const response = await axios.post('http://localhost:3001/anecdotes', newAnecdote)
+  return response.data
 }
 
+const AnecdoteForm = () => {
+  const queryClient = useQueryClient()
+  const { dispatch } = useNotification()
+
+  const { mutate } = useMutation(addAnecdote, {
+    onSuccess: (newAnecdote) => {
+      queryClient.setQueryData(['anecdotes'], (oldAnecdotes) => [...oldAnecdotes, newAnecdote])
+      dispatch({ type: 'SET_NOTIFICATION', payload: 'Anecdote added successfully!'})
+    },
+    onError: (error) => {
+      dispatch({ type: 'SET_NOTIFICATION', payload: 'Failed to add anecdote. Content must be at least 5 characters long.'})
+    }
+  })
+
+  const handleAddAnecdote = (e) => {
+    e.preventDefault()
+    const content = e.target.anecdote.value
+    if (content.length < 5) {
+      alert("Anecdote must be at least 5 characters long.")
+      return
+    }
+    mutate({ content, votes: 0 })
+    e.target.anecdote.value = ''
+  }
+
   return (
-    <div>
-      <h3>create new</h3>
-      <form onSubmit={onCreate}>
-        <input name='anecdote' />
-        <button type="submit">create</button>
-      </form>
-    </div>
+    <form onSubmit={handleAddAnecdote}>
+      <input name="anecdote" placeholder='Write an anecdote' />
+      <button type="submit">Add Anecdote</button>
+    </form>
   )
 }
 
